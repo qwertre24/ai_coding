@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>贪吃蛇游戏</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .screen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        .title {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #00ff88;
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.5),
+                         0 0 40px rgba(0, 255, 136, 0.3),
+                         0 0 60px rgba(0, 255, 136, 0.2);
+            animation: breathe 2s ease-in-out infinite;
+            letter-spacing: 8px;
+        }
+
+        @keyframes breathe {
+            0%, 100% {
+                opacity: 0.6;
+                transform: scale(1);
+                text-shadow: 0 0 20px rgba(0, 255, 136, 0.3),
+                             0 0 40px rgba(0, 255, 136, 0.2);
+            }
+            50% {
+                opacity: 1;
+                transform: scale(1.05);
+                text-shadow: 0 0 30px rgba(0, 255, 136, 0.8),
+                             0 0 60px rgba(0, 255, 136, 0.5),
+                             0 0 90px rgba(0, 255, 136, 0.3);
+            }
+        }
+
+        .btn {
+            padding: 15px 50px;
+            font-size: 1.3rem;
+            background: transparent;
+            color: #00ff88;
+            border: 2px solid #00ff88;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .btn:hover {
+            background: #00ff88;
+            color: #1a1a2e;
+            transform: scale(1.1);
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.6);
+        }
+
+        .difficulty-title {
+            font-size: 2rem;
+            color: #fff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .difficulty-options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .difficulty-btn {
+            padding: 15px 40px;
+            font-size: 1.1rem;
+            border: 2px solid #00ff88;
+            background: transparent;
+            color: #00ff88;
+            cursor: pointer;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        .difficulty-btn:hover {
+            background: #00ff88;
+            color: #1a1a2e;
+            transform: scale(1.05);
+        }
+
+        .difficulty-btn.selected {
+            background: #00ff88;
+            color: #1a1a2e;
+            box-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+        }
+
+        .game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .game-info {
+            display: flex;
+            gap: 30px;
+            font-size: 1.1rem;
+        }
+
+        .collected-chars {
+            display: flex;
+            gap: 10px;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 215, 0, 0.3);
+            border-radius: 10px;
+            min-height: 50px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .collected-char {
+            font-size: 1.5rem;
+            color: #ffd700;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            animation: charAppear 0.3s ease;
+        }
+
+        @keyframes charAppear {
+            from {
+                transform: scale(0);
+                opacity: 0;
+            }
+            to {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .info-item {
+            display: flex;
+            gap: 8px;
+        }
+
+        .info-label {
+            color: #aaa;
+        }
+
+        .info-value {
+            color: #00ff88;
+            font-weight: bold;
+        }
+
+        #gameCanvas {
+            border: 3px solid #00ff88;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3);
+        }
+
+        .canvas-wrapper {
+            position: relative;
+        }
+
+        .game-over-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            border-radius: 10px;
+        }
+
+        .game-over-overlay.active {
+            display: flex;
+        }
+
+        .game-over-text {
+            font-size: 2.5rem;
+            color: #ff4444;
+            text-shadow: 0 0 20px rgba(255, 68, 68, 0.5);
+        }
+
+        .final-score {
+            font-size: 1.3rem;
+            color: #fff;
+        }
+
+        .instructions {
+            margin-top: 15px;
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 8px 20px;
+            font-size: 0.9rem;
+            background: transparent;
+            color: #888;
+            border: 1px solid #888;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .back-btn:hover {
+            color: #fff;
+            border-color: #fff;
+        }
+
+        .snake-decoration {
+            position: absolute;
+            font-size: 3rem;
+            opacity: 0.1;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .snake-decoration:nth-child(1) { top: 10%; left: 10%; animation-delay: 0s; }
+        .snake-decoration:nth-child(2) { top: 20%; right: 15%; animation-delay: 0.5s; }
+        .snake-decoration:nth-child(3) { bottom: 15%; left: 20%; animation-delay: 1s; }
+        .snake-decoration:nth-child(4) { bottom: 25%; right: 10%; animation-delay: 1.5s; }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(10deg); }
+        }
+
+        .leaderboard {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(0, 255, 136, 0.3);
+            border-radius: 10px;
+            padding: 15px 25px;
+            min-width: 300px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .leaderboard-title {
+            font-size: 1.2rem;
+            color: #00ff88;
+            margin-bottom: 10px;
+            text-align: center;
+            text-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
+        }
+
+        .leaderboard-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 10px;
+            margin: 5px 0;
+            background: rgba(0, 255, 136, 0.1);
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+
+        .leaderboard-item:nth-child(2) {
+            background: rgba(255, 215, 0, 0.2);
+            border: 1px solid rgba(255, 215, 0, 0.5);
+        }
+
+        .leaderboard-rank {
+            color: #aaa;
+            width: 30px;
+        }
+
+        .leaderboard-score {
+            color: #00ff88;
+            font-weight: bold;
+            flex: 1;
+            text-align: center;
+        }
+
+        .leaderboard-difficulty {
+            color: #888;
+            font-size: 0.8rem;
+            padding: 2px 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .leaderboard-empty {
+            color: #666;
+            text-align: center;
+            padding: 20px;
+            font-size: 0.9rem;
+        }
+
+        .clear-btn {
+            display: block;
+            margin: 10px auto 0;
+            padding: 5px 15px;
+            font-size: 0.8rem;
+            background: transparent;
+            color: #888;
+            border: 1px solid #666;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .clear-btn:hover {
+            color: #ff4444;
+            border-color: #ff4444;
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .poetry-result {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 30px;
+            padding: 40px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 15px;
+            border: 2px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .poetry-target {
+            font-size: 1.8rem;
+            color: #fff;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        .poetry-current {
+            font-size: 2.5rem;
+            color: #00ff88;
+            font-weight: bold;
+            text-shadow: 0 0 20px rgba(0, 255, 136, 0.5);
+            min-height: 60px;
+        }
+
+        .poetry-message {
+            font-size: 1.3rem;
+            padding: 15px 30px;
+            border-radius: 10px;
+        }
+
+        .poetry-message.success {
+            color: #00ff88;
+            background: rgba(0, 255, 136, 0.2);
+            border: 1px solid #00ff88;
+        }
+
+        .poetry-message.error {
+            color: #ff4444;
+            background: rgba(255, 68, 68, 0.2);
+            border: 1px solid #ff4444;
+        }
+
+        .poetry-hint {
+            font-size: 1rem;
+            color: #888;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="snake-decoration">🐍</div>
+    <div class="snake-decoration">🐍</div>
+    <div class="snake-decoration">🐍</div>
+    <div class="snake-decoration">🐍</div>
+
+    <div class="screen active" id="startScreen">
+        <div class="title">贪吃蛇</div>
+        <div class="menu-buttons">
+            <button class="btn" onclick="showClassicModeScreen()">经典模式</button>
+            <button class="btn" onclick="showEntertainmentModeScreen()">娱乐模式</button>
+        </div>
+        <div class="leaderboard">
+            <div class="leaderboard-title">🏆 排行榜</div>
+            <div id="leaderboardList"></div>
+            <button class="clear-btn" onclick="clearLeaderboard()">清空记录</button>
+        </div>
+    </div>
+
+    <div class="screen" id="classicModeScreen">
+        <button class="back-btn" onclick="showStartScreen()">← 返回</button>
+        <div class="difficulty-title">经典模式 - 选择难度</div>
+        <div class="difficulty-options">
+            <button class="difficulty-btn" data-speed="200" onclick="selectDifficulty(200, this)">简单</button>
+            <button class="difficulty-btn selected" data-speed="120" onclick="selectDifficulty(120, this)">中等</button>
+            <button class="difficulty-btn" data-speed="60" onclick="selectDifficulty(60, this)">困难</button>
+        </div>
+        <button class="btn" onclick="startGame('classic')">开始游戏</button>
+    </div>
+
+    <div class="screen" id="entertainmentModeScreen">
+        <button class="back-btn" onclick="showStartScreen()">← 返回</button>
+        <div class="difficulty-title">娱乐模式</div>
+        <div class="difficulty-options">
+            <button class="difficulty-btn" data-speed="250" onclick="selectDifficulty(250, this)">诗词挑战</button>
+            <button class="difficulty-btn" onclick="showComingSoon('成语接龙')">成语接龙</button>
+            <button class="difficulty-btn" onclick="showComingSoon('拼音拼写')">拼音拼写</button>
+            <button class="difficulty-btn" onclick="showComingSoon('对联挑战')">对联挑战</button>
+        </div>
+        <button class="btn" onclick="startGame('entertainment')">开始游戏</button>
+    </div>
+
+    <div class="screen" id="comingSoonScreen">
+        <button class="back-btn" onclick="showEntertainmentModeScreen()">← 返回</button>
+        <div class="poetry-result">
+            <div class="poetry-target" id="comingSoonText"></div>
+            <div class="poetry-message" style="color: #ffd700; background: rgba(255, 215, 0, 0.2); border: 1px solid #ffd700;">
+                即将推出，敬请期待！
+            </div>
+        </div>
+    </div>
+
+    <div class="screen" id="poetryResultScreen">
+        <button class="back-btn" onclick="backToStart()">← 返回主菜单</button>
+        <div class="poetry-result">
+            <div class="poetry-target" id="poetryTarget"></div>
+            <div class="poetry-current" id="poetryCurrent"></div>
+            <div class="poetry-message" id="poetryMessage"></div>
+            <button class="btn" onclick="restartPoetryGame()">重新开始</button>
+        </div>
+    </div>
+
+    <div class="screen" id="gameScreen">
+        <button class="back-btn" onclick="backToStart()">← 返回主菜单</button>
+        
+        <div class="game-container">
+            <div class="game-info">
+                <div class="info-item">
+                    <span class="info-label">得分:</span>
+                    <span class="info-value" id="score">0</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">长度:</span>
+                    <span class="info-value" id="length">1</span>
+                </div>
+            </div>
+            <div class="collected-chars" id="collectedCharsDisplay"></div>
+
+            <div class="canvas-wrapper">
+                <canvas id="gameCanvas" width="400" height="400"></canvas>
+                <div class="game-over-overlay" id="gameOverOverlay">
+                    <div class="game-over-text">游戏结束!</div>
+                    <div class="final-score">最终得分: <span id="finalScore">0</span></div>
+                    <button class="btn" onclick="restartGame()">再来一局</button>
+                </div>
+            </div>
+
+            <div class="instructions">
+                使用 ↑ ↓ ← → 或 W A S D 控制蛇的移动
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        const GRID_SIZE = 20;
+        const GRID_COUNT = canvas.width / GRID_SIZE;
+        
+        let snake = [];
+        let foods = [];
+        let clearBall = null;
+        let direction = { x: 0, y: 0 };
+        let nextDirection = { x: 0, y: 0 };
+        let score = 0;
+        let gameLoop = null;
+        let gameSpeed = 120;
+        let isGameRunning = false;
+        let currentDifficulty = '中等';
+        let gameMode = 'classic';
+        let collectedChars = [];
+        let currentPoem = null;
+
+        const poetryDatabase = [
+            { target: '床前明月光', chars: ['床', '前', '明', '月', '光'] },
+            { target: '疑是地上霜', chars: ['疑', '是', '地', '上', '霜'] },
+            { target: '举头望明月', chars: ['举', '头', '望', '明', '月'] },
+            { target: '低头思故乡', chars: ['低', '头', '思', '故', '乡'] },
+            { target: '白日依山尽', chars: ['白', '日', '依', '山', '尽'] },
+            { target: '黄河入海流', chars: ['黄', '河', '入', '海', '流'] },
+            { target: '欲穷千里目', chars: ['欲', '穷', '千', '里', '目'] },
+            { target: '更上一层楼', chars: ['更', '上', '一', '层', '楼'] },
+            { target: '春眠不觉晓', chars: ['春', '眠', '不', '觉', '晓'] },
+            { target: '处处闻啼鸟', chars: ['处', '处', '闻', '啼', '鸟'] },
+            { target: '夜来风雨声', chars: ['夜', '来', '风', '雨', '声'] },
+            { target: '花落知多少', chars: ['花', '落', '知', '多', '少'] },
+            { target: '红豆生南国', chars: ['红', '豆', '生', '南', '国'] },
+            { target: '春来发几枝', chars: ['春', '来', '发', '几', '枝'] },
+            { target: '愿君多采撷', chars: ['愿', '君', '多', '采', '撷'] },
+            { target: '此物最相思', chars: ['此', '物', '最', '相', '思'] },
+            { target: '千山鸟飞绝', chars: ['千', '山', '鸟', '飞', '绝'] },
+            { target: '万径人踪灭', chars: ['万', '径', '人', '踪', '灭'] },
+            { target: '孤舟蓑笠翁', chars: ['孤', '舟', '蓑', '笠', '翁'] },
+            { target: '独钓寒江雪', chars: ['独', '钓', '寒', '江', '雪'] }
+        ];
+
+        function getDifficultyName(speed) {
+            if (speed === 200 || speed === 250) return '简单';
+            if (speed === 60 || speed === 80) return '困难';
+            return '中等';
+        }
+
+        function getLeaderboard() {
+            const data = localStorage.getItem('snakeLeaderboard');
+            return data ? JSON.parse(data) : [];
+        }
+
+        function saveScore(score, difficulty) {
+            const leaderboard = getLeaderboard();
+            leaderboard.push({
+                score: score,
+                difficulty: difficulty,
+                time: new Date().toLocaleString('zh-CN')
+            });
+            leaderboard.sort((a, b) => b.score - a.score);
+            const top10 = leaderboard.slice(0, 10);
+            localStorage.setItem('snakeLeaderboard', JSON.stringify(top10));
+            renderLeaderboard();
+        }
+
+        function renderLeaderboard() {
+            const leaderboard = getLeaderboard();
+            const listEl = document.getElementById('leaderboardList');
+            
+            if (leaderboard.length === 0) {
+                listEl.innerHTML = '<div class="leaderboard-empty">暂无记录</div>';
+                return;
+            }
+
+            listEl.innerHTML = leaderboard.map((item, index) => `
+                <div class="leaderboard-item">
+                    <span class="leaderboard-rank">${index + 1}</span>
+                    <span class="leaderboard-score">${item.score}</span>
+                    <span class="leaderboard-difficulty">${item.difficulty}</span>
+                </div>
+            `).join('');
+        }
+
+        function clearLeaderboard() {
+            localStorage.removeItem('snakeLeaderboard');
+            renderLeaderboard();
+        }
+
+        function showScreen(screenId) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+        }
+
+        function showStartScreen() {
+            showScreen('startScreen');
+        }
+
+        function showClassicModeScreen() {
+            showScreen('classicModeScreen');
+        }
+
+        function showEntertainmentModeScreen() {
+            showScreen('entertainmentModeScreen');
+        }
+
+        function showGameScreen() {
+            showScreen('gameScreen');
+        }
+
+        function showComingSoon(modeName) {
+            document.getElementById('comingSoonText').textContent = modeName;
+            showScreen('comingSoonScreen');
+        }
+
+        function selectDifficulty(speed, btn) {
+            gameSpeed = speed;
+            currentDifficulty = getDifficultyName(speed);
+            document.querySelectorAll('.difficulty-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+        }
+
+        function initGame() {
+            snake = [
+                { x: 10, y: 10 },
+                { x: 9, y: 10 },
+                { x: 8, y: 10 }
+            ];
+            direction = { x: 1, y: 0 };
+            nextDirection = { x: 1, y: 0 };
+            updateScore();
+            generateFood();
+        }
+
+        function generateFood() {
+            if (gameMode === 'entertainment' && currentPoem) {
+                foods = [];
+                const charsToPlace = currentPoem.chars.filter(char => !collectedChars.includes(char));
+                
+                for (let char of charsToPlace) {
+                    let validPosition = false;
+                    let pos;
+                    let attempts = 0;
+                    
+                    while (!validPosition && attempts < 100) {
+                        pos = {
+                            x: Math.floor(Math.random() * GRID_COUNT),
+                            y: Math.floor(Math.random() * GRID_COUNT),
+                            char: char
+                        };
+                        
+                        const notOnSnake = !snake.some(segment => segment.x === pos.x && segment.y === pos.y);
+                        const notOnFood = !foods.some(f => f.x === pos.x && f.y === pos.y);
+                        
+                        validPosition = notOnSnake && notOnFood;
+                        attempts++;
+                    }
+                    
+                    if (validPosition) {
+                        foods.push(pos);
+                    }
+                }
+                
+                if (!clearBall && Math.random() < 0.3) {
+                    let validPosition = false;
+                    let attempts = 0;
+                    
+                    while (!validPosition && attempts < 100) {
+                        const pos = {
+                            x: Math.floor(Math.random() * GRID_COUNT),
+                            y: Math.floor(Math.random() * GRID_COUNT)
+                        };
+                        
+                        const notOnSnake = !snake.some(segment => segment.x === pos.x && segment.y === pos.y);
+                        const notOnFood = !foods.some(f => f.x === pos.x && f.y === pos.y);
+                        
+                        validPosition = notOnSnake && notOnFood;
+                        if (validPosition) {
+                            clearBall = pos;
+                        }
+                        attempts++;
+                    }
+                }
+            } else {
+                let validPosition = false;
+                let newFood = { x: 0, y: 0 };
+                
+                while (!validPosition) {
+                    newFood.x = Math.floor(Math.random() * GRID_COUNT);
+                    newFood.y = Math.floor(Math.random() * GRID_COUNT);
+                    validPosition = !snake.some(segment => segment.x === newFood.x && segment.y === newFood.y);
+                }
+                
+                foods = [newFood];
+                clearBall = null;
+            }
+        }
+
+        function updateScore() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('length').textContent = snake.length;
+        }
+
+        function updateCollectedCharsDisplay() {
+            const display = document.getElementById('collectedCharsDisplay');
+            if (gameMode === 'entertainment') {
+                display.innerHTML = collectedChars.map(char => 
+                    `<span class="collected-char">${char}</span>`
+                ).join('');
+            } else {
+                display.innerHTML = '';
+            }
+        }
+
+        function draw() {
+            ctx.fillStyle = '#1a1a2e';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.strokeStyle = '#0f3460';
+            ctx.lineWidth = 0.5;
+            for (let i = 0; i < GRID_COUNT; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * GRID_SIZE, 0);
+                ctx.lineTo(i * GRID_SIZE, canvas.height);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i * GRID_SIZE);
+                ctx.lineTo(canvas.width, i * GRID_SIZE);
+                ctx.stroke();
+            }
+
+            snake.forEach((segment, index) => {
+                const gradient = ctx.createRadialGradient(
+                    segment.x * GRID_SIZE + GRID_SIZE / 2,
+                    segment.y * GRID_SIZE + GRID_SIZE / 2,
+                    0,
+                    segment.x * GRID_SIZE + GRID_SIZE / 2,
+                    segment.y * GRID_SIZE + GRID_SIZE / 2,
+                    GRID_SIZE / 2
+                );
+                
+                if (index === 0) {
+                    gradient.addColorStop(0, '#00ff88');
+                    gradient.addColorStop(1, '#00cc6a');
+                } else {
+                    const alpha = 1 - (index / snake.length) * 0.5;
+                    gradient.addColorStop(0, `rgba(0, 255, 136, ${alpha})`);
+                    gradient.addColorStop(1, `rgba(0, 204, 106, ${alpha})`);
+                }
+                
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.roundRect(
+                    segment.x * GRID_SIZE + 1,
+                    segment.y * GRID_SIZE + 1,
+                    GRID_SIZE - 2,
+                    GRID_SIZE - 2,
+                    4
+                );
+                ctx.fill();
+            });
+
+            if (gameMode === 'entertainment' && currentPoem) {
+                foods.forEach(food => {
+                    ctx.fillStyle = '#1a1a2e';
+                    ctx.beginPath();
+                    ctx.arc(
+                        food.x * GRID_SIZE + GRID_SIZE / 2,
+                        food.y * GRID_SIZE + GRID_SIZE / 2,
+                        GRID_SIZE / 2,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#ffd700';
+                    ctx.font = 'bold 14px "Microsoft YaHei", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(
+                        food.char,
+                        food.x * GRID_SIZE + GRID_SIZE / 2,
+                        food.y * GRID_SIZE + GRID_SIZE / 2 + 1
+                    );
+                });
+            } else {
+                foods.forEach(food => {
+                    const foodGradient = ctx.createRadialGradient(
+                        food.x * GRID_SIZE + GRID_SIZE / 2,
+                        food.y * GRID_SIZE + GRID_SIZE / 2,
+                        0,
+                        food.x * GRID_SIZE + GRID_SIZE / 2,
+                        food.y * GRID_SIZE + GRID_SIZE / 2,
+                        GRID_SIZE / 2
+                    );
+                    foodGradient.addColorStop(0, '#ff6b6b');
+                    foodGradient.addColorStop(1, '#ee5a5a');
+                    
+                    ctx.fillStyle = foodGradient;
+                    ctx.beginPath();
+                    ctx.arc(
+                        food.x * GRID_SIZE + GRID_SIZE / 2,
+                        food.y * GRID_SIZE + GRID_SIZE / 2,
+                        GRID_SIZE / 2 - 2,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                });
+                
+                if (clearBall) {
+                    const ballGradient = ctx.createRadialGradient(
+                        clearBall.x * GRID_SIZE + GRID_SIZE / 2,
+                        clearBall.y * GRID_SIZE + GRID_SIZE / 2,
+                        0,
+                        clearBall.x * GRID_SIZE + GRID_SIZE / 2,
+                        clearBall.y * GRID_SIZE + GRID_SIZE / 2,
+                        GRID_SIZE / 2
+                    );
+                    ballGradient.addColorStop(0, '#fff8dc');
+                    ballGradient.addColorStop(0.5, '#ffd700');
+                    ballGradient.addColorStop(1, '#daa520');
+                    
+                    ctx.fillStyle = ballGradient;
+                    ctx.beginPath();
+                    ctx.arc(
+                        clearBall.x * GRID_SIZE + GRID_SIZE / 2,
+                        clearBall.y * GRID_SIZE + GRID_SIZE / 2,
+                        GRID_SIZE / 2 - 1,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#1a1a2e';
+                    ctx.font = 'bold 10px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(
+                        '↺',
+                        clearBall.x * GRID_SIZE + GRID_SIZE / 2,
+                        clearBall.y * GRID_SIZE + GRID_SIZE / 2 + 1
+                    );
+                }
+            }
+        }
+
+        function update() {
+            direction = { ...nextDirection };
+            
+            const head = {
+                x: snake[0].x + direction.x,
+                y: snake[0].y + direction.y
+            };
+
+            if (head.x < 0) {
+                head.x = GRID_COUNT - 1;
+            } else if (head.x >= GRID_COUNT) {
+                head.x = 0;
+            }
+            
+            if (head.y < 0) {
+                head.y = GRID_COUNT - 1;
+            } else if (head.y >= GRID_COUNT) {
+                head.y = 0;
+            }
+
+            if (snake.some(segment => segment.x === head.x && segment.y === head.y)) {
+                gameOver();
+                return;
+            }
+
+            snake.unshift(head);
+
+            const eatenFoodIndex = foods.findIndex(f => f.x === head.x && f.y === head.y);
+            
+            if (eatenFoodIndex !== -1) {
+                const eatenFood = foods[eatenFoodIndex];
+                
+                if (gameMode === 'entertainment' && eatenFood.char) {
+                    collectedChars.push(eatenFood.char);
+                    updateCollectedCharsDisplay();
+                    
+                    const currentString = collectedChars.join('');
+                    
+                    foods.splice(eatenFoodIndex, 1);
+                    
+                    if (currentString === currentPoem.target) {
+                        showPoetryResult(true, currentPoem.target);
+                        return;
+                    } else if (foods.length === 0) {
+                        showPoetryResult(false, currentPoem.target);
+                        return;
+                    }
+                } else {
+                    score += 10;
+                    updateScore();
+                    generateFood();
+                }
+            } else if (clearBall && head.x === clearBall.x && head.y === clearBall.y) {
+                collectedChars = [];
+                updateCollectedCharsDisplay();
+                clearBall = null;
+                generateFood();
+            } else {
+                snake.pop();
+            }
+        }
+
+        function showPoetryResult(success, targetPoem) {
+            if (success) {
+                score += 50;
+                updateScore();
+                nextPoem();
+            } else {
+                isGameRunning = false;
+                clearInterval(gameLoop);
+                
+                showScreen('poetryResultScreen');
+                document.getElementById('poetryTarget').textContent = '诗句: ' + targetPoem;
+                document.getElementById('poetryCurrent').textContent = collectedChars.join('');
+                
+                const messageEl = document.getElementById('poetryMessage');
+                messageEl.textContent = '❌ 诗句错误！';
+                messageEl.className = 'poetry-message error';
+                saveScore(score, currentDifficulty + '(诗词)');
+            }
+        }
+
+        function nextPoem() {
+            clearInterval(gameLoop);
+            collectedChars = [];
+            
+            const availablePoems = poetryDatabase.filter(p => p.target !== currentPoem.target);
+            const randomIndex = Math.floor(Math.random() * availablePoems.length);
+            currentPoem = availablePoems[randomIndex];
+            
+            initGame();
+            draw();
+            updateCollectedCharsDisplay();
+            
+            isGameRunning = true;
+            gameLoop = setInterval(gameStep, gameSpeed);
+        }
+
+        function restartPoetryGame() {
+            clearInterval(gameLoop);
+            showGameScreen();
+            
+            const randomIndex = Math.floor(Math.random() * poetryDatabase.length);
+            currentPoem = poetryDatabase[randomIndex];
+            
+            collectedChars = [];
+            initGame();
+            draw();
+            updateCollectedCharsDisplay();
+            
+            isGameRunning = true;
+            gameLoop = setInterval(gameStep, gameSpeed);
+        }
+
+        function gameOver() {
+            isGameRunning = false;
+            clearInterval(gameLoop);
+            document.getElementById('finalScore').textContent = score;
+            document.getElementById('gameOverOverlay').classList.add('active');
+            saveScore(score, currentDifficulty);
+        }
+
+        function gameStep() {
+            update();
+            draw();
+        }
+
+        function startGame(mode) {
+            gameMode = mode;
+            collectedChars = [];
+            score = 0;
+            
+            if (mode === 'entertainment') {
+                const randomIndex = Math.floor(Math.random() * poetryDatabase.length);
+                currentPoem = poetryDatabase[randomIndex];
+            }
+            
+            showGameScreen();
+            
+            if (isGameRunning) {
+                clearInterval(gameLoop);
+            }
+            
+            document.getElementById('gameOverOverlay').classList.remove('active');
+            initGame();
+            draw();
+            updateCollectedCharsDisplay();
+            
+            isGameRunning = true;
+            gameLoop = setInterval(gameStep, gameSpeed);
+        }
+
+        function restartGame() {
+            if (isGameRunning) {
+                clearInterval(gameLoop);
+            }
+            
+            document.getElementById('gameOverOverlay').classList.remove('active');
+            initGame();
+            draw();
+            
+            isGameRunning = true;
+            gameLoop = setInterval(gameStep, gameSpeed);
+        }
+
+        function backToStart() {
+            if (isGameRunning) {
+                clearInterval(gameLoop);
+                isGameRunning = false;
+            }
+            showStartScreen();
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (!isGameRunning) return;
+            
+            const keyMap = {
+                'ArrowUp': { x: 0, y: -1 },
+                'ArrowDown': { x: 0, y: 1 },
+                'ArrowLeft': { x: -1, y: 0 },
+                'ArrowRight': { x: 1, y: 0 },
+                'w': { x: 0, y: -1 },
+                'W': { x: 0, y: -1 },
+                's': { x: 0, y: 1 },
+                'S': { x: 0, y: 1 },
+                'a': { x: -1, y: 0 },
+                'A': { x: -1, y: 0 },
+                'd': { x: 1, y: 0 },
+                'D': { x: 1, y: 0 }
+            };
+            
+            const newDir = keyMap[e.key];
+            if (newDir) {
+                e.preventDefault();
+                if (newDir.x !== -direction.x || newDir.y !== -direction.y) {
+                    nextDirection = newDir;
+                }
+            }
+        });
+
+        renderLeaderboard();
+    </script>
+</body>
+</html>
